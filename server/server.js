@@ -24,8 +24,8 @@ io.on("connection", (socket) => {
     console.log("Received message");
     console.log(data);
     io.to(socket.id).emit("newMessage", data);
-    const pairing = currentUsers.findIndex(user => user.id === socket.id);
-    io.to(currentUsers[pairing].pairing).emit("newMessage", data);
+    const user = currentUsers.findIndex(user => user.id === socket.id);
+    io.to(currentUsers[user].pairing).emit("newMessage", data);
   });
 
   socket.on("joinedLobby", (data) => {
@@ -34,7 +34,8 @@ io.on("connection", (socket) => {
       id: socket.id,
       username: data,
       available: true,
-      pairing: null
+      pairing: null,
+      previous: null
     });
 
     console.log(currentUsers);
@@ -67,14 +68,17 @@ io.on("connection", (socket) => {
       console.log("No users around");
       socket.emit("waitOnChat");
     }
+
   });
 
-  
+
   socket.on('leaveRoom', () => {
-    
+    //erase previous pairing on user
+    disconnectFromRando(socket)
   })
 
   socket.on("disconnect", (reason) => {
+    //disconnectFromRando(socket)
     console.log(`${socket.id} has disconnected`);
     const index = currentUsers.findIndex(user => user.id === socket.id);
     if (index !== -1) {
@@ -82,6 +86,20 @@ io.on("connection", (socket) => {
     }
   });
 });
+
+
+function disconnectFromRando(socket) {
+  const user = currentUsers.findIndex(user => user.id === socket.id);
+  const pair = currentUsers[user].pairing;
+  currentUsers[user].pairing = null;
+  currentUsers[user].available = true;
+  socket.emit('waitOnChat');
+  //erase previous pairing on other user
+  const pairing = currentUsers.findIndex(user => user.id === pair)
+  currentUsers[pairing].pairing = null;
+  currentUsers[pairing].available = true;
+  io.to(pair).emit('waitOnChat');
+}
 
 function shuffle(array) {
   let currentIndex = array.length;
