@@ -23,7 +23,9 @@ io.on("connection", (socket) => {
   socket.on("sendMsg", (data) => {
     console.log("Received message");
     console.log(data);
-    io.emit("newMessage", data);
+    io.to(socket.id).emit("newMessage", data);
+    const pairing = currentUsers.findIndex(user => user.id === socket.id);
+    io.to(currentUsers[pairing].pairing).emit("newMessage", data);
   });
 
   socket.on("joinedLobby", (data) => {
@@ -31,7 +33,8 @@ io.on("connection", (socket) => {
     currentUsers.push({
       id: socket.id,
       username: data,
-      available: true
+      available: true,
+      pairing: null
     });
 
     console.log(currentUsers);
@@ -45,13 +48,31 @@ io.on("connection", (socket) => {
       // Connect the stranger
       const stranger = randos[0];
       console.log(`${stranger.id} is now paired with ${socket.id}`);
-      socket.emit("gotoChat");
-      io.to(stranger.id).emit("gotoChat");
+      socket.emit("gotoChat", stranger.id);
+      io.to(stranger.id).emit("gotoChat", socket.id);
+      //declare them busy
+      const currentUserIndex = currentUsers.findIndex(user => user.id === socket.id);
+      if (currentUserIndex !== -1) {
+        currentUsers[currentUserIndex].available = false;
+        currentUsers[currentUserIndex].pairing = stranger.id;
+      }
+
+      const strangerIndex = currentUsers.findIndex(user => user.id === stranger.id);
+      if (strangerIndex !== -1) {
+        currentUsers[strangerIndex].available = false;
+        currentUsers[strangerIndex].pairing = socket.id;
+      }
+
     } else {
       console.log("No users around");
       socket.emit("waitOnChat");
     }
   });
+
+  
+  socket.on('leaveRoom', () => {
+    
+  })
 
   socket.on("disconnect", (reason) => {
     console.log(`${socket.id} has disconnected`);
