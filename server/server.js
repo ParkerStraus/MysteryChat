@@ -20,13 +20,17 @@ const currentUsers = [];
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
 
-  socket.on("sendMsg", (data) => {
+  socket.on("sendMsg", (msg) => {
     console.log("Received message");
-    console.log(data);
-    io.to(socket.id).emit("newMessage", data);
-    const user = currentUsers.findIndex(user => user.id === socket.id);
-    io.to(currentUsers[user].pairing).emit("newMessage", data);
+    console.log(msg);
+    const userIndex = currentUsers.findIndex(user => user.id === socket.id);
+    if (userIndex !== -1 && currentUsers[userIndex].currentRoom) {
+      io.in(currentUsers[userIndex].currentRoom).emit("newMessage", { id: currentUsers[userIndex].username, msg: msg });
+    } else {
+      console.log("User not found or not in a room");
+    }
   });
+
 
   socket.on("joinedLobby", (data) => {
     console.log(`${socket.id} + ${data}`);
@@ -34,14 +38,12 @@ io.on("connection", (socket) => {
       id: socket.id,
       username: data,
       available: true,
-      pairing: null,
-      previous: null
+      currentRoom: null,
+      previous: []
     });
 
-    console.log(currentUsers);
-
-    //check for available chat rooms
-    let randos = currentUsers.filter(user => user.id !== socket.id && user.available);
+    // Check for available chat rooms
+    let randos = currentUsers.filter(user => user.id !== socket.id && user.available && !user.previous.includes(socket.id));
 
     shuffle(randos);
 
@@ -49,26 +51,50 @@ io.on("connection", (socket) => {
       // Connect the stranger
       const stranger = randos[0];
       console.log(`${stranger.id} is now paired with ${socket.id}`);
-      socket.emit("gotoChat", stranger.id);
-      io.to(stranger.id).emit("gotoChat", socket.id);
-      //declare them busy
-      const currentUserIndex = currentUsers.findIndex(user => user.id === socket.id);
-      if (currentUserIndex !== -1) {
-        currentUsers[currentUserIndex].available = false;
-        currentUsers[currentUserIndex].pairing = stranger.id;
-      }
 
-      const strangerIndex = currentUsers.findIndex(user => user.id === stranger.id);
-      if (strangerIndex !== -1) {
-        currentUsers[strangerIndex].available = false;
-        currentUsers[strangerIndex].pairing = socket.id;
-      }
+      // Create room
+      const roomID = socket.id + '_' + Math.floor(Math.random() * 100000000);
+      socket.join(roomID);
+      // make stranger join room
+      
+      // Find the stranger's socket based on the ID
+      const strangerSocket = io.sockets.sockets.get(stranger.id);
 
+      // Check if the stranger's socket exists and then make it join the room
+      if (strangerSocket) {
+        strangerSocket.join(roomID);
+      } else {
+        console.log('Stranger socket not found');
+      }
+      //CODE NEEDS TO GO HERE CHATGPT
+
+      io.in(roomID).emit("gotoChat");
+    
+
+
+
+
+      // Set current room for both users
+      const currentUser = currentUsers.find(user => user.id === socket.id);
+      const strangerUser = currentUsers.find(user => user.id === stranger.id);
+
+      currentUser.currentRoom = roomID;
+      strangerUser.currentRoom = roomID;
+
+      // Emit events
+
+      // Mark users as busy
+      currentUser.available = false;
+      strangerUser.available = false;
+
+      currentUser.previous.push(stranger.id);
+      strangerUser.previous.push(socket.id);
     } else {
       console.log("No users around");
       socket.emit("waitOnChat");
     }
 
+    console.log(currentUsers);
   });
 
 
@@ -93,12 +119,45 @@ function disconnectFromRando(socket) {
   const pair = currentUsers[user].pairing;
   currentUsers[user].pairing = null;
   currentUsers[user].available = true;
-  socket.emit('waitOnChat');
+  socket.emit('chatend');
   //erase previous pairing on other user
   const pairing = currentUsers.findIndex(user => user.id === pair)
   currentUsers[pairing].pairing = null;
   currentUsers[pairing].available = true;
-  io.to(pair).emit('waitOnChat');
+  io.to(pair).emit('chatend');
+}
+
+function reconnect() {
+  let randos = currentUsers.filter(user => user.id !== socket.id && user.available && !user.previous.includes(socket.id));
+
+  shuffle(randos);
+
+  if (randos.length > 0) {
+    // Connect the stranger
+    const stranger = randos[0];
+    console.log(`${stranger.id} is now paired with ${socket.id}`);
+    socket.emit("gotoChat", stranger.id);
+    io.to(stranger.id).emit("gotoChat", socket.id);
+    //declare them busy
+    const currentUserIndex = currentUsers.findIndex(user => user.id === socket.id);
+    if (currentUserIndex !== -1) {
+      currentUsers[currentUserIndex].available = false;
+      currentUsers[currentUserIndex].pairing = stranger.id;
+      currentUsers[currentUserIndex].previous.push(stranger.id);
+    }
+
+    const strangerIndex = currentUsers.findIndex(user => user.id === stranger.id);
+    if (strangerIndex !== -1) {
+      currentUsers[strangerIndex].available = false;
+      currentUsers[strangerIndex].pairing = socket.id;
+      currentUsers[strangerIndex].previous.push(socket.id);
+    }
+
+  } else {
+    console.log("No users around");
+    socket.emit("waitOnChat");
+  }
+
 }
 
 function shuffle(array) {
