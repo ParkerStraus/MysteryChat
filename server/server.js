@@ -131,18 +131,33 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("leavelobby", () => {
+    console.log(`${socket.id} has LEFT THE CHAT`);
+    vacateRoom();
+    //remove from user list
+    const index = currentUsers.findIndex(user => user.id === socket.id);
+    if (index !== -1) {
+      currentUsers.splice(index, 1);
+    }
+
+  })
+
 
   function vacateRoom() {
     console.log(`Now removing ${socket.io} from current room`)
     userDisconnecting = currentUsers.find(user => user.id === socket.id);
-    const guest = currentUsers.find(user => user.id == userDisconnecting.previous[userDisconnecting.previous.length - 1]);
     socket.to(userDisconnecting.currentRoom).emit('userHasLeft');
-    io.sockets.sockets.get(guest.id).leave(userDisconnecting.currentRoom);
     socket.leave(userDisconnecting.currentRoom);
+    try{
+      const guest = currentUsers.find(user => user.id == userDisconnecting.previous[userDisconnecting.previous.length - 1]);
+      io.sockets.sockets.get(guest.id).leave(userDisconnecting.currentRoom);
+      guest.currentRoom = null;
+      guest.available = true;
+    }catch(e){
+      console.log("No other guest");
+    }
 
     userDisconnecting.currentRoom = null;
-    guest.currentRoom = null;
-    guest.available = true;
     userDisconnecting.available = true;
   }
 

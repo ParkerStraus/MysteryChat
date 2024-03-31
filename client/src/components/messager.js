@@ -1,12 +1,13 @@
 import { SocketContext } from '../socket';
 import { useContext, useCallback, useEffect, useState } from 'react';
 
-export default function MessagerComponent({pairingSocket }) {
+export default function MessagerComponent({returnToLobby}) {
     const socket = useContext(SocketContext);
     const [messages, setMessages] = useState([{}]);
     const [user, setUser] = useState("");
     const [guest, setGuest] = useState("");
     var InRoom = false;
+    console.log("Return to lobby function:", returnToLobby);
 
     useEffect(() => {socket.on("newMessage", (data) => {
             console.log(data);
@@ -61,9 +62,10 @@ export default function MessagerComponent({pairingSocket }) {
             </div>
             <div>
                 <input type="text" id="field" />
-                <button onClick={onSendMsg}>Press to send</button>
+                <button onClick={onSendMsg}>&gt;</button>
                 <br/>
                 <button id = "discon_button"onClick={Disconnect}>Disconnect</button>
+                <button id = "returnToLobby_button"onClick={() => returnToLobby()}>Return To Lobby</button>
             </div>
         </>
     );

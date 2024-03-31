@@ -5,17 +5,18 @@ import Login from './login';
 import MessagerComponent from './messager';
 import Idle from './idle';
 
-export default function Router({currentSetting, declareName}){
+export default function Router({currentSetting, declareUsername, returnToLobby}){
     const socket = useContext(SocketContext);
+    console.log("Return to lobby function:", returnToLobby);
 
     useEffect(() => {
     })
 
     switch(currentSetting) {
         case 'login':
-            return <Login sendUsername={declareName}/>
+            return <Login sendUsername = {declareUsername} />
         case 'chat':
-            return <MessagerComponent/>
+            return <MessagerComponent returnToLobby={() => returnToLobby()}/>
         case 'idle':
             return <Idle/>
     }

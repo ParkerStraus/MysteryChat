@@ -33,13 +33,18 @@ function App() {
   socket.on("gotoChat", (pairing) => {
     console.log("Hiya partner");
     setCurrentSetting('chat');
-    setCurrentPairing(pairing);
   })
+
+  function returnToLobby(){
+    socket.emit('leavelobby');
+    setCurrentSetting('login');
+
+  }
 
 
   return (
     <SocketContext.Provider value={socket}>
-      <Router currentSetting = {currentSetting} declareName ={declareName} />
+      <Router currentSetting = {currentSetting} declareUsername={declareName} returnToLobby = {returnToLobby}/>
     </SocketContext.Provider>
   );
 }
