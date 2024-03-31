@@ -89,6 +89,9 @@ io.on("connection", (socket) => {
 
       currentUser.previous.push(stranger.id);
       strangerUser.previous.push(socket.id);
+
+      socket.emit("userJoined", {user: currentUser.username, guest: stranger.username});
+      strangerSocket.emit("userJoined", {user: stranger.username, guest: currentUser.username});
     } else {
       console.log("No users around");
       socket.emit("waitOnChat");
@@ -101,9 +104,13 @@ io.on("connection", (socket) => {
   socket.on('leaveRoom', () => {
     //Disconnect user
     console.log(`${socket.id} has left the room`);
+    user = currentUsers.find(user => user.id === socket.id)
+    stranger = user.previous[user.previous.length-1]
     vacateRoom()
 
-    //connect to another user
+    //connect users to others
+    reconnect(user.id);
+    reconnect(stranger);
   })
 
   socket.on("disconnect", (reason) => {
@@ -114,6 +121,7 @@ io.on("connection", (socket) => {
       //vacate rooms
       if(currentUsers.find(user => user.id === socket.id).currentRoom != null){
         vacateRoom();
+        reconnect(currentUsers.find(user => user.id === socket.id).previous[user.previous.length-1])
       }
       //remove from user list
       const index = currentUsers.findIndex(user => user.id === socket.id);
@@ -136,6 +144,63 @@ io.on("connection", (socket) => {
     guest.currentRoom = null;
     guest.available = true;
     userDisconnecting.available = true;
+  }
+
+  function reconnect(relevantSocket){
+    newSocket = io.sockets.sockets.get(relevantSocket);
+    let randos = currentUsers.filter(user => user.id !== newSocket.id && user.available && !user.previous.includes(newSocket.id));
+
+    shuffle(randos);
+
+    if (randos.length > 0) {
+      // Connect the stranger
+      const stranger = randos[0];
+      console.log(`${stranger.id} is now paired with ${newSocket.id}`);
+
+      // Create room
+      const roomID = newSocket.id + '_' + Math.floor(Math.random() * 100000000);
+      newSocket.join(roomID);
+      // make stranger join room
+
+      // Find the stranger's socket based on the ID
+      const strangerSocket = io.sockets.sockets.get(stranger.id);
+
+      // Check if the stranger's socket exists and then make it join the room
+      if (strangerSocket) {
+        strangerSocket.join(roomID);
+      } else {
+        console.log('Stranger socket not found');
+      }
+      //CODE NEEDS TO GO HERE CHATGPT
+
+      io.in(roomID).emit("gotoChat");
+
+
+
+
+
+      // Set current room for both users
+      const currentUser = currentUsers.find(user => user.id === newSocket.id);
+      const strangerUser = currentUsers.find(user => user.id === stranger.id);
+
+      currentUser.currentRoom = roomID;
+      strangerUser.currentRoom = roomID;
+
+      // Emit events
+
+      // Mark users as busy
+      currentUser.available = false;
+      strangerUser.available = false;
+
+      currentUser.previous.push(stranger.id);
+      strangerUser.previous.push(newSocket.id);
+
+      newSocket.emit("userJoined", {user: currentUser.username, guest: stranger.username});
+      strangerSocket.emit("userJoined", {user: stranger.username, guest: currentUser.username});
+    } else {
+      console.log("No users around");
+    }
+
   }
 
 });

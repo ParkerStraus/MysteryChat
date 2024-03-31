@@ -32,13 +32,10 @@ export default function MessagerComponent({pairingSocket }) {
     }, [socket])
 
     useEffect(() => {socket.on("userJoined", (data) => {
-        if(InRoom = false){
             console.log(data);
             setUser(data.user);
             setGuest(data.guest)
             document.getElementById("discon_button").disabled = false;
-            InRoom = true;
-        }
         })
     }, [socket])
 
