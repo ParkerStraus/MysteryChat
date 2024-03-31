@@ -100,9 +100,8 @@ io.on("connection", (socket) => {
 
   socket.on('leaveRoom', () => {
     //Disconnect user
-    userDisconnecting = currentUsers.find(user => user.id === socket.id);
-    socket.leave(userDisconnecting.currentRoom);
-    io.to(userDisconnecting.currentRoom).emit('userDisconnected')
+    console.log(`${socket.id} has left the room`);
+    vacateRoom()
   })
 
   socket.on("disconnect", (reason) => {
@@ -113,7 +112,23 @@ io.on("connection", (socket) => {
       currentUsers.splice(index, 1);
     }
   });
+  
+
+  function vacateRoom(){
+    userDisconnecting = currentUsers.find(user => user.id === socket.id);
+    const guest = currentUsers.find(user => user.id == userDisconnecting.previous[userDisconnecting.previous.length - 1]);
+    socket.to(userDisconnecting.currentRoom).emit('userHasLeft');
+    io.sockets.sockets.get(guest.id).leave(userDisconnecting.currentRoom);
+    socket.leave(userDisconnecting.currentRoom);
+        
+    userDisconnecting.currentRoom = null;
+    guest.currentRoom = null;
+    guest.available = true;
+    userDisconnecting.available= true;
+  }
+
 });
+
 
 function shuffle(array) {
   let currentIndex = array.length;

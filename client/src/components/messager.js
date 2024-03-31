@@ -21,12 +21,9 @@ export default function MessagerComponent({pairingSocket }) {
     }, [socket]);
 
     useEffect(() => {socket.on('userHasLeft', () => {
-        if(InRoom){
             setMessages(prevMessages => [...prevMessages, {id: '', msg: "User has fled"}]);
             document.getElementById("discon_button").disabled = true;
             console.log("The other user has disconnected");
-            InRoom = false;
-        }
             
         return () => {
             socket.off('userHasLeft');
