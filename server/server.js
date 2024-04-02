@@ -92,6 +92,9 @@ io.on("connection", (socket) => {
 
       socket.emit("userJoined", {user: currentUser.username, guest: stranger.username});
       strangerSocket.emit("userJoined", {user: stranger.username, guest: currentUser.username});
+
+      
+      io.in(roomID).emit("newMessage", { id: '', msg: `${currentUser.username} is now linked with ${stranger.username}`});
     } else {
       console.log("No users around");
       socket.emit("waitOnChat");
@@ -115,19 +118,29 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", (reason) => {
     //disconnectFromRando(socket)
+    try {
       console.log(`${socket.id} has disconnected`);
-    if (currentUsers.find(user => user.id === socket.id) != undefined) {
-      console.log(`Now removing from rooms and chat`);
-      //vacate rooms
-      if(currentUsers.find(user => user.id === socket.id).currentRoom != null){
-        vacateRoom();
-        reconnect(currentUsers.find(user => user.id === socket.id).previous[user.previous.length-1])
-      }
-      //remove from user list
       const index = currentUsers.findIndex(user => user.id === socket.id);
+      console.log(currentUsers[index]);
+      prev = currentUsers[index].previous[currentUsers[index].previous.length - 1];
+
       if (index !== -1) {
+        console.log(`found with index != -1`);
+
+        if (index != undefined) {
+          //vacate rooms
+          if (currentUsers[index].currentRoom != null) {
+            console.log(`Now removing ${socket.id} from room`);
+            console.log(vacateRoom());
+            reconnect(prev);
+          }
+          //remove from user list
+        }
         currentUsers.splice(index, 1);
       }
+    }
+    catch (e) {
+
     }
   });
 
@@ -144,7 +157,7 @@ io.on("connection", (socket) => {
 
 
   function vacateRoom() {
-    console.log(`Now removing ${socket.io} from current room`)
+    console.log(`Now removing ${socket} from current room`)
     userDisconnecting = currentUsers.find(user => user.id === socket.id);
     socket.to(userDisconnecting.currentRoom).emit('userHasLeft');
     socket.leave(userDisconnecting.currentRoom);
@@ -159,6 +172,7 @@ io.on("connection", (socket) => {
 
     userDisconnecting.currentRoom = null;
     userDisconnecting.available = true;
+    return "Done Vacating";
   }
 
   function reconnect(relevantSocket){

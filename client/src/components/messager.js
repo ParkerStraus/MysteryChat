@@ -53,29 +53,34 @@ export default function MessagerComponent({returnToLobby}) {
     }
 
     return (
-        <>
-        <h1 id = "currentStatus">Current User: {user} -|- Talking to {guest}</h1>
-            <div id="feed">
-                {messages.map((msg, index) => (
-                    <Message key={index} message={msg} />
-                ))}
+        <div class="container">
+            <div class="MainMessager">
+                <div id="currentStatus">Current User: {user} -|- Talking to {guest}</div>
+                
             </div>
-            <div>
+            <div id="feed">
+                    {messages.map((msg, index) => (
+                        <Message key={index} message={msg} />
+                    ))}
+            </div>
+            <div class='Messager_Bottom'>
                 <input type="text" id="field" />
                 <button onClick={onSendMsg}>&gt;</button>
-                <br/>
-                <button id = "discon_button"onClick={Disconnect}>Disconnect</button>
-                <button id = "returnToLobby_button"onClick={() => returnToLobby()}>Return To Lobby</button>
+                <br />
+                <button id="discon_button" onClick={Disconnect}>Disconnect</button>
+                <button id="returnToLobby_button" onClick={() => returnToLobby()}>Return To Lobby</button>
             </div>
-        </>
+        </div>
+
+
     );
 }
 
 function Message({ message }) {
     return (
-        <div>
-            <p>{message.id}</p>
-            <p>{message.msg}</p>
+        <div className='message'>
+            <p className='sender'>{message.id}</p>
+            <p className='message_text'>{message.msg}</p>
         </div>
     );
 }
