@@ -4,8 +4,7 @@ import { useContext, useCallback, useEffect, useState } from 'react';
 export default function MessagerComponent({returnToLobby}) {
     const socket = useContext(SocketContext);
     const [messages, setMessages] = useState([{}]);
-    const [user, setUser] = useState("");
-    const [guest, setGuest] = useState("");
+    const [header, setHeader] = useState("");
     var InRoom = false;
     console.log("Return to lobby function:", returnToLobby);
 
@@ -25,6 +24,7 @@ export default function MessagerComponent({returnToLobby}) {
             setMessages(prevMessages => [...prevMessages, {id: '', msg: "User has fled"}]);
             document.getElementById("discon_button").disabled = true;
             console.log("The other user has disconnected");
+            setHeader(`Waiting for new player to join`);
             
         return () => {
             socket.off('userHasLeft');
@@ -34,11 +34,15 @@ export default function MessagerComponent({returnToLobby}) {
 
     useEffect(() => {socket.on("userJoined", (data) => {
             console.log(data);
-            setUser(data.user);
-            setGuest(data.guest)
             document.getElementById("discon_button").disabled = false;
+            setHeader(`Current User: ${data.user} -|- Talking to ${data.guest}`);
         })
     }, [socket])
+
+    useEffect(() => {
+        // Update the document title using the browser API
+        document.getElementById("currentStatus").innerText = header;
+    });
 
     const onSendMsg = () => {
         const msg = document.getElementById("field").value;
@@ -50,12 +54,13 @@ export default function MessagerComponent({returnToLobby}) {
         socket.emit('leaveRoom');
         setMessages(prevMessages => [...prevMessages, {id: '', msg: "Disconnected from room"}]);
         document.getElementById("discon_button").disabled = true;
+        setHeader(`Waiting for new player to join`);
     }
 
     return (
         <div class="container">
             <div class="MainMessager">
-                <div id="currentStatus">Current User: {user} -|- Talking to {guest}</div>
+                <div id="currentStatus">{header}</div>
                 
             </div>
             <div id="feed">
